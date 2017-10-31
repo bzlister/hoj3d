@@ -100,13 +100,23 @@ def getHisto(data, means, numAlphaBins, numThetaBins):
 			hB['angle'] = [data['b data'][p][k], data['b data'][p][k+1]]
 			
 			#something is off about the probability calculation. The 5th probability (when n and m are 0 and the bins evaluated at are Na/Ma and Nb/Mb) should be the highest, but that is often not the case
+			#additionally, the probability is often not in the range [0, 1]
 			for n in range (-1, 2):
 				for m in range (-1, 2):
 					#yikes
+					# the prob lines are essentially: ((|alpha* - alpha0| - |alpha* - alpha1|) * (|theta* - theta0| - |theta* - theta1|))/(stDev(alpha)*stDev(theta)) where alpha* is the actualy 
+					#joint location, alpha0/1 is the lower/upper alpha bin value
 					hA['bins'].append([alphaBins[(Na+n)%(numAlphaBins)], " < alpha < ", alphaBins[(Na+n+1)%(numAlphaBins)], thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Ma+m-numThetaBins+1)))], " < beta < ", thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Ma+m-numThetaBins+2)))]])
-					hA['prob'].append(math.fabs(data['a data'][p][k] - alphaBins[(Na+n)%(numAlphaBins)])*math.fabs(data['a data'][p][k+1] - thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Ma+m-numThetaBins+1)))])*math.fabs(data['a data'][p][k] - alphaBins[(Na+n+1)%(numAlphaBins)])*math.fabs(data['a data'][p][k+1] - thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Ma+m-numThetaBins+2)))])*(1/(stDevsA[k]*stDevsA[k+1])))
 					hB['bins'].append([alphaBins[(Nb+n)%(numAlphaBins)], " < alpha < ", alphaBins[(Nb+n+1)%(numAlphaBins)], thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Mb+m-numThetaBins+1)))], " < beta < ", thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Mb+m-numThetaBins+2)))]])
-					hB['prob'].append(math.fabs(data['b data'][p][k] - alphaBins[(Nb+n)%(numAlphaBins)])*math.fabs(data['b data'][p][k+1] - thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Mb+m-numThetaBins+1)))])*math.fabs(data['b data'][p][k] - alphaBins[(Nb+n+1)%(numAlphaBins)])*math.fabs(data['b data'][p][k+1] - thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Mb+m-numThetaBins+2)))])*(1/(stDevsB[k]*stDevsB[k+1])))
+					
+					hA['prob'].append((math.fabs(data['a data'][p][k] - alphaBins[(Na+n)%(numAlphaBins)]) - math.fabs(data['a data'][p][k] - alphaBins[(Na+n+1)%(numAlphaBins)]))
+										*(math.fabs(data['a data'][p][k+1] - thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Ma+m-numThetaBins+1)))]) - math.fabs(data['a data'][p][k+1] - thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Ma+m-numThetaBins+2)))]))
+										*(1/(stDevsA[k]*stDevsA[k+1])))
+					
+					
+					hB['prob'].append((math.fabs(data['b data'][p][k] - alphaBins[(Nb+n)%(numAlphaBins)]) - math.fabs(data['b data'][p][k] - alphaBins[(Nb+n+1)%(numAlphaBins)]))
+										*(math.fabs(data['b data'][p][k+1] - thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Mb+m-numThetaBins+1)))]) - math.fabs(data['b data'][p][k+1] - thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Mb+m-numThetaBins+2)))]))
+										*(1/(stDevsB[k]*stDevsB[k+1])))
 
 			k = k + 2
 			histoA[p].append(hA)
