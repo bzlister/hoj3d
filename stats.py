@@ -1,6 +1,7 @@
 import math
 import os, os.path
 import numpy as np
+import scipy.stats as st
 import rectToSph
 
 #Ben Lister
@@ -20,8 +21,8 @@ def getStats(directory):
 				sD = ssD + "\\" + os.listdir(ssD)[j]
 				if (os.listdir(ssD)[j] != ".DS_Store"):
 						data = rectToSph.sphereical(sD+"\\skeleton_pos.txt")
-						a_data.append(data['a data'])
-						b_data.append(data['b data'])
+						a_data.extend(data['a data'])
+						b_data.extend(data['b data'])
 						for k in range(0,  30):
 							for m in range(0, len(data['a data'])):
 								if ((m == 0) & (i == 0)):
@@ -31,13 +32,14 @@ def getStats(directory):
 									a_means[k] = a_means[k]*(n[k]/(n[k]+1)) + data['a data'][m][k]*(1/(n[k]+1))
 									b_means[k] = b_means[k]*(n[k]/(n[k]+1)) + data['b data'][m][k]*(1/(n[k]+1))
 								n[k] = n[k]+1
-	stats = {'a data': a_data, 'b data': b_data, 'a means': a_means, 'b means': b_means}
-	return stats
+	data = {'a data': a_data, 'b data': b_data}
+	means = {'a means': a_means, 'b means': b_means}
+	return {'data': data, 'means': means}
 	
 
 #First computes standard deviation of the data, 
 #then generates a histogram for every joint in every frame based on the probability the joint is in any of the 9 surrounding bins at that instant
-#the target bin, where the joint actually is, is the 5th entry in the returned data structure
+#the target bin, where the joint actually is, is the 5th entry in the returned histogram data structure
 def getHisto(data, means, numAlphaBins, numThetaBins):
 	stDevsA = [0]*30
 	stDevsB = [0]*30
@@ -99,24 +101,26 @@ def getHisto(data, means, numAlphaBins, numThetaBins):
 			hA['angle'] = [data['a data'][p][k], data['a data'][p][k+1]]
 			hB['angle'] = [data['b data'][p][k], data['b data'][p][k+1]]
 			
-			#something is off about the probability calculation. The 5th probability (when n and m are 0 and the bins evaluated at are Na/Ma and Nb/Mb) should be the highest, but that is often not the case
-			#additionally, the probability is often not in the range [0, 1]
+			#something might be off about the probability calculation. The 5th probability (when n and m are 0 and the bins evaluated at are Na/Ma and Nb/Mb) should be the highest, but that is often not the case
 			for n in range (-1, 2):
 				for m in range (-1, 2):
 					#yikes
-					# the prob lines are essentially: ((|alpha* - alpha0| - |alpha* - alpha1|) * (|theta* - theta0| - |theta* - theta1|))/(stDev(alpha)*stDev(theta)) where alpha* is the actualy 
-					#joint location, alpha0/1 is the lower/upper alpha bin value
-					hA['bins'].append([alphaBins[(Na+n)%(numAlphaBins)], " < alpha < ", alphaBins[(Na+n+1)%(numAlphaBins)], thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Ma+m-numThetaBins+1)))], " < beta < ", thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Ma+m-numThetaBins+2)))]])
-					hB['bins'].append([alphaBins[(Nb+n)%(numAlphaBins)], " < alpha < ", alphaBins[(Nb+n+1)%(numAlphaBins)], thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Mb+m-numThetaBins+1)))], " < beta < ", thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Mb+m-numThetaBins+2)))]])
+					#the index for alphaBins and thetaBins refer to the way they wrap around differently
+					#the probability lines are essentially |P((|alpha*-alpha0|-|alpha*-alpha1|)/stDevAlpha) * P((|theta*-theta0|-|theta*-theta1|)/stDevTheta)|
+					hA['bins'].append([alphaBins[(Na+n)%numAlphaBins], '< alpha <', alphaBins[(Na+n+1)%numAlphaBins], thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Ma+m-numThetaBins+1)))], '< beta <', thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Ma+m-numThetaBins+2)))]])
+					hB['bins'].append([alphaBins[(Nb+n)%numAlphaBins], '< alpha <', alphaBins[(Nb+n+1)%numAlphaBins], thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Mb+m-numThetaBins+1)))], '< beta <', thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Mb+m-numThetaBins+2)))]])
 					
-					hA['prob'].append((math.fabs(data['a data'][p][k] - alphaBins[(Na+n)%(numAlphaBins)]) - math.fabs(data['a data'][p][k] - alphaBins[(Na+n+1)%(numAlphaBins)]))
-										*(math.fabs(data['a data'][p][k+1] - thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Ma+m-numThetaBins+1)))]) - math.fabs(data['a data'][p][k+1] - thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Ma+m-numThetaBins+2)))]))
-										*(1/(stDevsA[k]*stDevsA[k+1])))
+					hA['prob'].append(math.fabs((st.norm.cdf(math.fabs(data['a data'][p][k] - alphaBins[(Na+n)%numAlphaBins])/stDevsA[k]) 
+										- st.norm.cdf(math.fabs(data['a data'][p][k] - alphaBins[(Na+n+1)%numAlphaBins])/stDevsA[k]))
+										*(st.norm.cdf(math.fabs(data['a data'][p][k+1] - thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Ma+m-numThetaBins+1)))])/stDevsA[k+1]) 
+										- st.norm.cdf(math.fabs(data['a data'][p][k+1] - thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Ma+m-numThetaBins+2)))])/stDevsA[k+1]))))
 					
+					hB['prob'].append(math.fabs((st.norm.cdf(math.fabs(data['b data'][p][k] - alphaBins[(Nb+n)%numAlphaBins])/stDevsB[k])
+										- st.norm.cdf(math.fabs(data['b data'][p][k] - alphaBins[(Nb+n+1)%numAlphaBins])/stDevsB[k]))
+										*(st.norm.cdf(math.fabs(data['b data'][p][k+1] - thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Mb+m-numThetaBins+1)))])/stDevsB[k+1])
+										- st.norm.cdf(math.fabs(data['b data'][p][k+1] - thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Mb+m-numThetaBins+1)))])/stDevsB[k+1]))))
+										
 					
-					hB['prob'].append((math.fabs(data['b data'][p][k] - alphaBins[(Nb+n)%(numAlphaBins)]) - math.fabs(data['b data'][p][k] - alphaBins[(Nb+n+1)%(numAlphaBins)]))
-										*(math.fabs(data['b data'][p][k+1] - thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Mb+m-numThetaBins+1)))]) - math.fabs(data['b data'][p][k+1] - thetaBins[int(math.fabs(numThetaBins-1-math.fabs(Mb+m-numThetaBins+2)))]))
-										*(1/(stDevsB[k]*stDevsB[k+1])))
 
 			k = k + 2
 			histoA[p].append(hA)
