@@ -20,12 +20,7 @@ def sphereical(filename):
 			y1 = getY(ex[j+1][i])
 			z1 = getZ(ex[j+2][i])
 			alpha = math.atan2(y1,x1)
-			# if (alpha < 0):
-				# alpha = alpha+2*math.pi
-			# if (alpha >= 2*math.pi):
-				# alpha = alpha-2*math.pi
 			spA[i].append(alpha)
-			#Confirm if ok to not restrict theta in range (0, pi)
 			spA[i].append(math.acos(z1/math.sqrt(math.pow(z1,2)+math.pow(y1,2)+math.pow(x1,2))))
 			
 			j = j + 3
@@ -36,12 +31,7 @@ def sphereical(filename):
 			z2 = getZ(ex[k+2][i])
 			
 			alpha = math.atan2(y2,x2)
-			# if (alpha < 0):
-				# alpha = alpha+2*math.pi
-			# if (alpha >= 2*math.pi):
-				# alpha = alpha-2*math.pi
 			spB[i].append(alpha)
-			#Confirm if ok to not restrict theta in range (0, pi)
 			spB[i].append(math.acos(z2/math.sqrt(math.pow(z2,2)+math.pow(y2,2)+math.pow(x2,2))))
 			
 			k = k + 3

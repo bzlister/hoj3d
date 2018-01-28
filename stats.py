@@ -14,7 +14,10 @@ def getStats(directory):
 	a_data = {}
 	b_data = {}
 	numActions = 0
-
+	minTheta = math.pi
+	maxTheta = 0
+	minAlpha = 2*math.pi
+	maxAlpha = 0
 	for i in range(0, len(os.listdir(directory))):
 		ssD = directory + "\\" + os.listdir(directory)[i]
 		if (os.listdir(directory)[i] != ".DS_Store"):
@@ -33,6 +36,27 @@ def getStats(directory):
 						for m in range(0, len(data['a data'])):
 							a_action_means[k] = a_action_means[k] + data['a data'][m][k]
 							b_action_means[k] = b_action_means[k] + data['b data'][m][k]
+							
+							#prints min and max alpha and theta
+							if (k%2==0):
+								if (data['a data'][m][k] < minAlpha):
+									minAlpha = data['a data'][m][k]
+								if (data['b data'][m][k] < minAlpha):
+									minAlpha = data['b data'][m][k]
+								if (data['a data'][m][k] > maxAlpha):
+									maxAlpha = data['a data'][m][k]
+								if (data['b data'][m][k] > maxAlpha):
+									maxAlpah = data['a data'][m][k]
+							if (k%2==1):
+								if (data['a data'][m][k] < minTheta):
+									minTheta = data['a data'][m][k]
+								if (data['b data'][m][k] < minTheta):
+									minTheta = data['b data'][m][k]
+								if (data['a data'][m][k] > maxTheta):
+									maxTheta = data['a data'][m][k]
+								if (data['b data'][m][k] > maxTheta):
+									maxTheta = data['b data'][m][k]
+							
 						a_action_means[k] = a_action_means[k]/len(data['a data'])
 						b_action_means[k] = b_action_means[k]/len(data['b data'])
 						for n in range(0, len(data['a data'])):
@@ -45,18 +69,25 @@ def getStats(directory):
 					a_stdevs[numActions] = a_action_devs
 					b_stdevs[numActions] = b_action_devs
 					numActions = numActions+1
+	print(minAlpha, maxAlpha)
+	print(minTheta, maxTheta)
 	data = {'a data': a_data, 'b data': b_data}
 	stats = {'a means': a_means, 'b means': b_means, 'a devs': a_stdevs, 'b devs': b_stdevs}
 	return {'data': data, 'stats': stats}
 	
 
-#First computes standard deviation of the data, 
-#then generates a histogram for every joint in every frame based on the probability the joint is in any of the 9 surrounding bins at that instant
-#the target bin, where the joint actually is, is the 5th entry in the returned histogram data structure
-def getHisto(data, stats, numAlphaBins, numThetaBins):
+#returned data structure is of the form ['<a or b> postures'][<action>][<frame>][<joint>]['<angle or probs>'][<1x2 1D array or 3x24 2D array>]
+def getHisto(data, stats):
 
 	histoA = {}
 	histoB = {}
+	
+	#defining bin boundaries
+	alphaBins = []
+	for x in range (0, 25):
+		alphaBins.append(x*math.pi/12 - math.pi)
+	thetaBins = alphaBins[12:16]
+	
 	#for every action
 	for z in range(0, len(data['a data'])):
 		actionA = {}
@@ -68,48 +99,41 @@ def getHisto(data, stats, numAlphaBins, numThetaBins):
 			#for every joint
 			k = 0
 			while (k < 29):
-				hA = {'angle':[], 'bins':[], 'prob':[]}
-				hB = {'angle':[], 'bins':[], 'prob':[]}
+				jointA = {'angle':[], 'prob':[]}
+				jointB = {'angle':[], 'prob':[]}
 				alphaA = data['a data'][z][p][k]
 				thetaA = data['a data'][z][p][k+1]
 				alphaB = data['b data'][z][p][k]
 				thetaB = data['b data'][z][p][k+1]
-				hA['angle'] = [alphaA, thetaA]
-				hB['angle'] = [alphaB, thetaB]
+				jointA['angle'] = [alphaA, thetaA]
+				jointB['angle'] = [alphaB, thetaB]
 				
-				aAlphaBins = [0]*4
-				bAlphaBins = [0]*4
-				aThetaBins = [0]*4
-				bThetaBins = [0]*4
-				for x in range (-1, 3):
-					aAlphaBins[x+1] = (int(alphaA/((2*math.pi)/numAlphaBins))+x)*((2*math.pi)/numAlphaBins)
-					bAlphaBins[x+1] = (int(alphaB/((2*math.pi)/numAlphaBins))+x)*((2*math.pi)/numAlphaBins)
-					aThetaBins[x+1] = (int(thetaA/(math.pi/numThetaBins))+x)*(math.pi/numThetaBins)
-					bThetaBins[x+1] = (int(thetaB/(math.pi/numThetaBins))+x)*(math.pi/numThetaBins)
-					if (alphaA < 0):
-						aAlphaBins[x+1] = aAlphaBins[x+1] - (2*math.pi)/numAlphaBins
-					if (alphaB < 0):
-						bAlphaBins[x+1] = bAlphaBins[x+1] - (2*math.pi)/numAlphaBins
+				probsA = [[0 for x in range(24)] for y in range(3)]
+				probsB = [[0 for x in range(24)] for y in range(3)]
 				
-				hA['bins'].append(aAlphaBins)
-				hA['bins'].append(aThetaBins)
-				hB['bins'].append(bAlphaBins)
-				hB['bins'].append(bThetaBins)
-				#bins are calculated with alpha increasing first, then theta
-				
-				for y in range(0, 3):
-					for w in range(0, 3):
-						alphaProbA = st.norm.cdf((aAlphaBins[w+1]-alphaA)/stats['a devs'][z][k] - (alphaA-aAlphaBins[w])/stats['a devs'][z][k])
-						thetaProbA = st.norm.cdf((aThetaBins[y+1]-thetaA)/stats['a devs'][z][k+1] - (thetaA-aThetaBins[y])/stats['a devs'][z][k+1])
-						alphaProbB = st.norm.cdf((bAlphaBins[w+1]-alphaB)/stats['b devs'][z][k] - (alphaB-bAlphaBins[w])/stats['b devs'][z][k+1])
-						thetaProbB = st.norm.cdf((bThetaBins[y+1]-thetaB)/stats['b devs'][z][k+1] - (thetaB-bThetaBins[y])/stats['b devs'][z][k+1])
-						
-						hA['prob'].append(alphaProbA*thetaProbA)
-						hB['prob'].append(alphaProbB*thetaProbB)
+				alphaProbA = [0]*24
+				alphaProbB = [0]*24
+				thetaProbA = [0]*3
+				thetaProbB = [0]*3
+				for i in range(0, 24):
+					alphaProbA[i] = st.norm.cdf((alphaBins[i+1]-alphaA)/stats['a devs'][z][k]) - st.norm.cdf((alphaA-alphaBins[i])/stats['a devs'][z][k])
+					alphaProbB[i] = st.norm.cdf((alphaBins[i+1]-alphaB)/stats['b devs'][z][k]) - st.norm.cdf((alphaB-alphaBins[i])/stats['b devs'][z][k])
+				for j in range(0, 3):
+						thetaProbA[j] = st.norm.cdf((thetaBins[j+1]-thetaA)/stats['a devs'][z][k+1]) - st.norm.cdf((thetaA-thetaBins[j])/stats['a devs'][z][k+1])
+						thetaProbB[j] = st.norm.cdf((thetaBins[j+1]-thetaB)/stats['b devs'][z][k+1]) - st.norm.cdf((thetaB-thetaBins[j])/stats['b devs'][z][k+1])
 
-				frameA[int(k/2)] = hA
-				frameB[int(k/2)] = hB				
+				for thetaIndex in range(0, 3):
+					for alphaIndex in range(0, 24):
+						probsA[thetaIndex][alphaIndex] = math.fabs(alphaProbA[alphaIndex]*thetaProbA[thetaIndex])
+						probsB[thetaIndex][alphaIndex] = math.fabs(alphaProbB[alphaIndex]*thetaProbB[thetaIndex])
+ 
+				jointA['prob'] = probsA
+				jointB['prob'] = probsB
+				
+				frameA[int(k/2)] = jointA
+				frameB[int(k/2)] = jointB				
 				k = k + 2
+				
 			actionA[p] = frameA
 			actionB[p] = frameB
 		histoA[z] = actionA
