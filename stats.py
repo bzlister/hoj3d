@@ -116,11 +116,11 @@ def getHisto(data, stats):
 				thetaProbA = [0]*3
 				thetaProbB = [0]*3
 				for i in range(0, 24):
-					alphaProbA[i] = st.norm.cdf((alphaBins[i+1]-alphaA)/stats['a devs'][z][k]) - st.norm.cdf((alphaA-alphaBins[i])/stats['a devs'][z][k])
-					alphaProbB[i] = st.norm.cdf((alphaBins[i+1]-alphaB)/stats['b devs'][z][k]) - st.norm.cdf((alphaB-alphaBins[i])/stats['b devs'][z][k])
+					alphaProbA[i] = st.norm.cdf((alphaA-alphaBins[i+1])/stats['a devs'][z][k]) - st.norm.cdf((alphaA-alphaBins[i])/stats['a devs'][z][k])
+					alphaProbB[i] = st.norm.cdf((alphaB-alphaBins[i+1])/stats['b devs'][z][k]) - st.norm.cdf((alphaB-alphaBins[i])/stats['b devs'][z][k])
 				for j in range(0, 3):
-						thetaProbA[j] = st.norm.cdf((thetaBins[j+1]-thetaA)/stats['a devs'][z][k+1]) - st.norm.cdf((thetaA-thetaBins[j])/stats['a devs'][z][k+1])
-						thetaProbB[j] = st.norm.cdf((thetaBins[j+1]-thetaB)/stats['b devs'][z][k+1]) - st.norm.cdf((thetaB-thetaBins[j])/stats['b devs'][z][k+1])
+						thetaProbA[j] = st.norm.cdf((thetaA-thetaBins[j+1])/stats['a devs'][z][k+1]) - st.norm.cdf((thetaA-thetaBins[j])/stats['a devs'][z][k+1])
+						thetaProbB[j] = st.norm.cdf((thetaB-thetaBins[j+1])/stats['b devs'][z][k+1]) - st.norm.cdf((thetaB-thetaBins[j])/stats['b devs'][z][k+1])
 
 				for thetaIndex in range(0, 3):
 					for alphaIndex in range(0, 24):
